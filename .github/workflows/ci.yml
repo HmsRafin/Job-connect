@@ -1,0 +1,136 @@
+name: CI
+
+on:
+  push:
+    branches: [develop]
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  frontend:
+    name: Frontend lint and production build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build
+      - name: Verify deployable entry point
+        run: test -s ../backend/public/app/index.html
+
+  backend:
+    name: Backend PHP 8.4 / ${{ matrix.database }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        database: [sqlite, mysql]
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: ci-only-root-password
+          MYSQL_DATABASE: jobconnect_test
+          MYSQL_USER: jobconnect_test
+          MYSQL_PASSWORD: ci-only-test-password
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 --silent"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      APP_ENV: testing
+      DB_CONNECTION: ${{ matrix.database }}
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_DATABASE: ${{ matrix.database == 'mysql' && 'jobconnect_test' || ':memory:' }}
+      DB_USERNAME: jobconnect_test
+      DB_PASSWORD: ci-only-test-password
+      CACHE_STORE: array
+      SESSION_DRIVER: array
+      QUEUE_CONNECTION: sync
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: pdo_mysql, pdo_sqlite, mbstring, bcmath, intl, zip
+          coverage: none
+          tools: composer:v2
+      - run: composer validate --strict
+      - run: composer install --no-interaction --prefer-dist --no-progress
+      - name: Prepare test application key
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+      - name: PHP syntax
+        run: find app bootstrap config database routes tests -name '*.php' -print0 | xargs -0 -n1 php -l > /dev/null
+      - run: composer test
+
+  docker:
+    name: Docker build and HTTP readiness
+    runs-on: ubuntu-latest
+    needs: [frontend, backend]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generate isolated container credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          printf 'APP_KEY=base64:%s\nDB_PASSWORD=%s\nDB_ROOT_PASSWORD=%s\n' \
+            "$(openssl rand -base64 32)" "$(openssl rand -hex 32)" "$(openssl rand -hex 32)" > .env
+          admin_password="$(openssl rand -hex 24)"
+          printf 'ADMIN_EMAIL=ci-admin@jobconnect.test\nADMIN_PASSWORD=%s\n' "$admin_password" >> .env
+          printf 'ADMIN_EMAIL=ci-admin@jobconnect.test\nADMIN_PASSWORD=%s\n' "$admin_password" >> "$GITHUB_ENV"
+      - name: Build and start all containers
+        run: docker compose up --build --wait --wait-timeout 240
+      - name: Check HTTP routes and persisted restart
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error http://127.0.0.1:8080/api/health | python3 -c 'import json,sys; assert json.load(sys.stdin)["status"] == "ok"'
+          curl --fail --silent --show-error http://127.0.0.1:8080/ | grep -q 'id="root"'
+          curl --fail --silent --show-error http://127.0.0.1:8080/login | grep -q 'id="root"'
+          docker compose exec -T backend php artisan migrate:status
+          docker compose restart backend
+          docker compose up --wait --wait-timeout 120
+          curl --fail --silent --show-error http://127.0.0.1:8080/api/health > /dev/null
+      - name: Container failure diagnostics
+        if: failure()
+        run: docker compose logs --tail=100
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: qa/package-lock.json
+      - name: Install browser test runner
+        working-directory: qa
+        run: npm ci
+      - name: Install Chromium
+        working-directory: qa
+        run: npx playwright install --with-deps chromium
+      - name: Test the running Docker application in Chromium
+        working-directory: qa
+        run: npm test
+        env:
+          BASE_URL: http://127.0.0.1:8080
+      - name: Stop containers
+        if: always()
+        run: docker compose down

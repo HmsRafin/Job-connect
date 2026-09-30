@@ -1,24 +1,43 @@
-# Logs
-logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
+# JobConnect — root ignores
+# Env & secrets (keep .example files)
+.env
+.env.vps
+.env.local
+.env.production
+*.key
+*.pem
+*.p12
 
-node_modules
-dist
-dist-ssr
-*.local
+# Docker volumes (persisted data)
+backend/database/database.sqlite
+backend/storage/app/public/*
+!backend/storage/app/public/.gitignore
 
-# Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-.idea
+# OS / Editor
 .DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
+Thumbs.db
+*.log
+.idea/
+.vscode/
+*.tmp
+*.swp
+
+# Node / vendor (already ignored in sub-projects, but safe here)
+node_modules/
+dist/
+vendor/
+/backend/public/app/
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+*.sqlite-journal
+.env.*
+!.env.*.example
+!**/.env.example
+Keys/
+.tools/
+*credentials*
+playwright-report/
+test-results/
+.next/
+release*.tar.gz

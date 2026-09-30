@@ -1,0 +1,91 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: jobconnect-production
+  cancel-in-progress: false
+
+env:
+  DEPLOY_USER: s20210104034
+  DEPLOY_HOST: 187.52.122.100
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci.yml
+
+  deploy:
+    name: Build release and deploy through PHP-FPM
+    runs-on: ubuntu-latest
+    needs: ci
+    if: github.ref == 'refs/heads/main'
+    environment:
+      name: production
+      url: http://jobconnect.austattendance.online
+    steps:
+      - name: Get the code
+        uses: actions/checkout@v4
+      - name: Use PHP 8.4, matching the class server
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: pdo_mysql, mbstring, bcmath, intl, zip
+          coverage: none
+          tools: composer:v2
+      - name: Install production PHP dependencies on the runner
+        working-directory: backend
+        run: |
+          composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist --no-progress
+          composer check-platform-reqs --no-dev
+      - name: Use Node.js LTS
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Build React on the runner
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run build
+          test -s ../backend/public/app/index.html
+      - name: Pack and validate release
+        run: bash scripts/pack-release.sh
+      - name: Load separate deployment key and verify server identity
+        shell: bash
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SSH_HOST_FINGERPRINT: ${{ vars.SSH_HOST_FINGERPRINT }}
+        run: |
+          set -euo pipefail
+          test -n "$SSH_PRIVATE_KEY"
+          test -n "$SSH_HOST_FINGERPRINT"
+          umask 077
+          mkdir -p ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/jobconnect_deploy
+          chmod 600 ~/.ssh/jobconnect_deploy
+          ssh-keyscan -t ed25519 -H "$DEPLOY_HOST" > ~/.ssh/jobconnect_known_hosts
+          actual_fingerprint="$(ssh-keygen -lf ~/.ssh/jobconnect_known_hosts -E sha256 | awk '{print $2}')"
+          test "$actual_fingerprint" = "$SSH_HOST_FINGERPRINT"
+      - name: Copy prebuilt release with SCP
+        run: |
+          scp -i ~/.ssh/jobconnect_deploy -o IdentitiesOnly=yes -o BatchMode=yes \
+            -o StrictHostKeyChecking=yes -o UserKnownHostsFile=~/.ssh/jobconnect_known_hosts \
+            release.tar.gz "$DEPLOY_USER@$DEPLOY_HOST:release.tar.gz"
+      - name: Extract, migrate, optimize and verify on the server
+        shell: bash
+        run: |
+          set -euo pipefail
+          release_hash="$(sha256sum release.tar.gz | cut -d ' ' -f 1)"
+          ssh -i ~/.ssh/jobconnect_deploy -o IdentitiesOnly=yes -o BatchMode=yes \
+            -o StrictHostKeyChecking=yes -o UserKnownHostsFile=~/.ssh/jobconnect_known_hosts \
+            "$DEPLOY_USER@$DEPLOY_HOST" "bash -s -- $release_hash" < scripts/remote-deploy.sh
+      - name: Remove runner's private key
+        if: always()
+        run: rm -f ~/.ssh/jobconnect_deploy
