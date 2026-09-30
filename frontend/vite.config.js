@@ -2,9 +2,9 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
 // https://vite.dev/config/
-export default defineConfig({
+export default defineConfig(({ command }) => ({
   plugins: [react()],
-  base: '/app/',
+  base: command === 'build' ? '/app/' : '/',
   build: {
     outDir: '../backend/public/app',
     emptyOutDir: true,
@@ -15,4 +15,4 @@ export default defineConfig({
       '/storage': 'http://127.0.0.1:8000',
     },
   },
-})
+}))

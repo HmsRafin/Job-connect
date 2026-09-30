@@ -13,7 +13,11 @@ class PlatformController extends Controller
 {
     public function categories()
     {
-        return response()->json(['success' => true, 'data' => DB::table('categories')->orderBy('name')->get()]);
+        $categories = DB::table('categories')->select('categories.*')->selectSub(
+            JobListing::selectRaw('COUNT(*)')->whereColumn('category', 'categories.name')->where('status', 'Active'),
+            'listings_count'
+        )->orderBy('name')->get();
+        return response()->json(['success' => true, 'data' => $categories]);
     }
 
     public function createCategory(Request $request)
