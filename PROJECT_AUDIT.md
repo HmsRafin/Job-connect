@@ -6,10 +6,10 @@ Audit date: 2026-10-01. Source: `Keys/CSE 3100 - Final Checkpoint Guidelines (1)
 
 | PDF requirement | Implementation | Verification |
 | --- | --- | --- |
-| Working live project (5 marks) | Laravel API and React SPA; three roles; persisted workflows | Local API and browser tests; live verification recorded after pipeline deployment |
-| Own MySQL database/user (3 marks) | `jobconnect_db` and limited `jobconnect` user on instructor-managed `cse3100-db`, localhost port 3307 | Created through authorized setup; CI runs backend tests on MySQL; pipeline runs live migrations |
+| Working live project (5 marks) | Laravel API and React SPA; three roles; persisted workflows | Live HTTP health and direct routes passed; Chromium verified the live recruiter/admin/seeker workflow |
+| Own MySQL database/user (3 marks) | `jobconnect_db` and limited `jobconnect` user on instructor-managed `cse3100-db`, localhost port 3307 | Live connection verified as `jobconnect@%` on `jobconnect_db`; all 19 migrations ran; CI tests passed on MySQL |
 | End-to-end QA (2 marks) | Same-origin `/api`; static assets under `/app/`; Laravel SPA fallback | PHPUnit API tests and Chromium UI tests, including direct-route reload and mobile layout |
-| CI/CD (10 marks) | Push to master or main triggers tests, production Composer install, npm ci/build, validated archive, SCP, SSH migrations/optimize | A successful Actions run and exact deployed commit are required evidence |
+| CI/CD (10 marks) | Push to master or main triggers tests, production Composer install, npm ci/build, validated archive, SCP, SSH migrations/optimize | [Successful Actions run 36806347680](https://github.com/HmsRafin/Job-connect/actions/runs/36806347680), deploying commit `2ebf859382e364d30c72ffc1a88aeca028ac2864` |
 | Instructor-visible public repository | `HmsRafin/Job-Connect` | Repository currently private; owner decision on public visibility is pending |
 | PHP-FPM and nginx on assigned domain | Per-user PHP 8.4 socket; JobConnect-only nginx site | Socket confirmed; domain resolves; `nginx -t` passed before reload |
 | No builds/dev servers on class VPS | All dependency installation and asset compilation happen in Actions | Deployment scripts run only extraction, permissions, Artisan migrations/cache and HTTP checks |
@@ -37,7 +37,12 @@ Audit date: 2026-10-01. Source: `Keys/CSE 3100 - Final Checkpoint Guidelines (1)
 - Backend suite: 11 tests and 53 assertions passed on local SQLite after dependency updates. GitHub Actions also passed the suite on SQLite and MySQL.
 - Frontend production build passed. Lint has existing non-fatal unused-import and hook-dependency warnings; these are not represented as a clean warning-free run.
 - All three local Chromium tests passed, covering public/mobile pages, registration and route guards, profile updates, private CV upload, job approval/application, demo advertisement checkout, and all role pages.
-- Local Docker execution is unavailable because this Windows computer has no Docker engine. CI builds and exercises the actual Docker stack on an isolated runner.
+- Local Docker execution is unavailable because this Windows computer has no Docker engine. GitHub Actions successfully built and started the actual Docker stack, verified HTTP readiness after a backend restart, and passed all three browser tests.
+- The production release installed dependencies and built assets on the GitHub runner, validated 7,513 archive entries, copied the archive over SCP, and completed migrations, administrator seeding, cache generation and HTTP verification on the class server.
+- Independent live checks returned HTTP 200 for database health, the home page, login and direct dashboard routes. Both live Chromium scenarios passed: desktop/mobile public pages and the full recruiter/admin/seeker workflow, including profile changes, private CV upload, job approval/application and demo checkout. Temporary workflow accounts were removed by the tests.
+- Live server verification confirmed all 19 migrations ran, the application uses its own MySQL database/user, production debug is disabled, one administrator exists, and the private environment file has mode 600.
+
+The first deployment attempt had been queued before the approved repository secrets were restored and stopped before SCP because those values were empty. Retrying the failed job with the configured secrets succeeded; the linked run contains this history. Documentation-only updates after the deployed commit do not change application behavior.
 
 ## Deliberate limits
 
