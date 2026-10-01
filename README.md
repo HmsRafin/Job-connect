@@ -1,5 +1,7 @@
 # Job Connect — Full Project Documentation
 
+**Live project: [Open Job Connect](http://jobconnect.austattendance.online)**
+
 > **One-line summary:** Job Connect is a full-stack job portal & hiring platform connecting **Job Seekers**, **Recruiters / Companies**, and **Admins** — with job posting, applications, recruitment pipeline (tasks + interviews), paid post boosting, advertisements, payments, and complaint support.
 
 - **Project directory:** `Job connect/` (relative to this documentation file)
