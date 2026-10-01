@@ -9,8 +9,8 @@ Audit date: 2026-10-01. Source: `Keys/CSE 3100 - Final Checkpoint Guidelines (1)
 | Working live project (5 marks) | Laravel API and React SPA; three roles; persisted workflows | Local API and browser tests; live verification recorded after pipeline deployment |
 | Own MySQL database/user (3 marks) | `jobconnect_db` and limited `jobconnect` user on instructor-managed `cse3100-db`, localhost port 3307 | Created through authorized setup; CI runs backend tests on MySQL; pipeline runs live migrations |
 | End-to-end QA (2 marks) | Same-origin `/api`; static assets under `/app/`; Laravel SPA fallback | PHPUnit API tests and Chromium UI tests, including direct-route reload and mobile layout |
-| CI/CD (10 marks) | Push to main triggers tests, production Composer install, npm ci/build, validated archive, SCP, SSH migrations/optimize | A successful Actions run and exact deployed commit are required evidence |
-| Instructor-visible public repository | `HmsRafin/Job-Connect` | Public repository created |
+| CI/CD (10 marks) | Push to master or main triggers tests, production Composer install, npm ci/build, validated archive, SCP, SSH migrations/optimize | A successful Actions run and exact deployed commit are required evidence |
+| Instructor-visible public repository | `HmsRafin/Job-Connect` | Repository currently private; owner decision on public visibility is pending |
 | PHP-FPM and nginx on assigned domain | Per-user PHP 8.4 socket; JobConnect-only nginx site | Socket confirmed; domain resolves; `nginx -t` passed before reload |
 | No builds/dev servers on class VPS | All dependency installation and asset compilation happen in Actions | Deployment scripts run only extraction, permissions, Artisan migrations/cache and HTTP checks |
 | Preserve secrets and data | Private environment on server, dedicated deploy key in encrypted Actions secret, persistent runtime directories | Release allowlist and validator reject environment files, keys, databases and runtime storage |
@@ -34,9 +34,9 @@ Audit date: 2026-10-01. Source: `Keys/CSE 3100 - Final Checkpoint Guidelines (1)
 
 - PHP syntax checks passed for application, routes, configuration, migrations and tests.
 - Composer strict validation passed.
-- Backend suite: 11 tests and 53 assertions passed on local SQLite after dependency updates.
+- Backend suite: 11 tests and 53 assertions passed on local SQLite after dependency updates. GitHub Actions also passed the suite on SQLite and MySQL.
 - Frontend production build passed. Lint has existing non-fatal unused-import and hook-dependency warnings; these are not represented as a clean warning-free run.
-- Initial browser run passed public/mobile pages and the full role-page workflow. Expanded profile/upload/checkout tests are part of the final CI gate.
+- All three local Chromium tests passed, covering public/mobile pages, registration and route guards, profile updates, private CV upload, job approval/application, demo advertisement checkout, and all role pages.
 - Local Docker execution is unavailable because this Windows computer has no Docker engine. CI builds and exercises the actual Docker stack on an isolated runner.
 
 ## Deliberate limits
