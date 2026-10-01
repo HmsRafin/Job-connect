@@ -28,7 +28,7 @@ The deployment compares a fresh `ssh-keyscan` result to that fingerprint before 
 
 ## Release process
 
-Push to the default branch, `master` (the workflow also accepts `main`). The `Deploy to VPS` workflow invokes CI, including MySQL integration tests and a running Docker/browser test. Only after it succeeds does the release job:
+Push to the default branch, `master` (the workflow also accepts `main`). The [CI/CD Pipeline](https://github.com/HmsRafin/Job-connect/actions/workflows/deploy.yml) workflow invokes CI, including MySQL integration tests and a running Docker/browser test. Only after it succeeds does the release job:
 
 1. Install production PHP packages on the GitHub runner with an optimized autoloader.
 2. Run Node 24, `npm ci` and the React production build into `backend/public/app`.
