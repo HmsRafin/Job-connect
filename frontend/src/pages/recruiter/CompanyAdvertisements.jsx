@@ -219,10 +219,8 @@ export default function CompanyAdvertisements() {
       <PaymentModal
         isOpen={showPayment}
         onClose={() => setShowPayment(false)}
-        onSuccess={handlePaymentSuccess}
-        amount={totalCost}
-        itemTitle={title || 'Company Advertisement Campaign'}
-        itemType="Company Advertisement"
+        onPaymentSuccess={handlePaymentSuccess}
+        summary={{ title: title || 'Company Advertisement Campaign', amount: totalCost, duration: days }}
       />
     </div>
   );
